@@ -1,28 +1,42 @@
 package tconn
 
-import "net"
-import "log"
-import "bufio"
-import "errors"
-import "regexp"
-import "strings"
+import (
+	"bufio"
+	"errors"
+	"log"
+	"net"
+	"regexp"
+	"strings"
+)
 
-var commands map[string]Runner
+var (
+	ConnectionType string
+	Address        string
+	Log            = true
 
-var ConnectionType string
-var Address string
+	CommandNotFoundRunner Runner
 
-var cmdRegexp = regexp.MustCompile(`"([^"]+)"|((?:[^ ]|)+)`)
+	cmdRegexp = regexp.MustCompile(`"([^"]+)"|((?:[^ ]|)+)`)
+	commands  map[string]Runner
 
-var CommandNotFoundRunner Runner
-
-var Log = true
+	running = false
+)
 
 func RegisterCommand(command string, runner Runner) {
 	commands[command] = runner
 }
 
+func Stop() {
+	running = false
+}
+
 func Listen() error {
+	if running {
+		return errors.New("Server is already running")
+	}
+
+	running = true
+
 	if ConnectionType == "" {
 		return errors.New("Connection Type is not set")
 	}
@@ -39,7 +53,7 @@ func Listen() error {
 
 func listen(listener net.Listener) {
 	defer listener.Close()
-	for {
+	for running {
 		c, err := listener.Accept()
 		if err != nil {
 			if Log {
